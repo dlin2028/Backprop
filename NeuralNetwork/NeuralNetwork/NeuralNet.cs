@@ -67,52 +67,6 @@ namespace NeuralNetwork
             }
         }
 
-        /// <summary>
-        /// Mutates the weights and biases of the neural network to slightly alter it based on a given mutation rate
-        /// </summary>
-        /// <param name="random">a given random number generator in case seeds are wanted to control the randomization process</param>
-        /// <param name="rate">the given mutation rate. ranged 0-1, representing the % of the neural network that will be mutated</param>
-        public void Mutate(Random random, double rate)
-        {
-            oldLayers = new List<Layer>(Layers.ToArray());
-            foreach (Layer layer in Layers)
-            {
-                foreach (Neuron perceptron in layer.Neurons)
-                {
-                    if (random.NextDouble() < rate)
-                    {
-                        //a percentage based change is ideal since it allows smaller numbers to have small changes
-                        perceptron.BiasWeight *= random.NextDouble(0.5, 1.5) * random.RandomSign();
-                    }
-
-                    for (int w = 0; w < perceptron.Weights.Length; w++)
-                    {
-                        if (random.NextDouble() < rate)
-                        {
-                            //a percentage based change is ideal since it allows smaller numbers to have small changes
-                            perceptron.Weights[w] *= random.NextDouble(0.5, 1.5) * random.RandomSign();
-                        }
-                    }
-                }
-            }
-        }
-
-        //Crossover
-        public void Crossover(NeuralNet other, Random rng)
-        {
-            for (int i = 0; i < Layers.Count; i++)
-            {
-                for (int j = 0; j < Layers[i].Neurons.Length; j++)
-                {
-                    if(rng.Next(2) == 0)
-                    {
-                        Layers[i].Neurons[j].BiasWeight = other.Layers[i].Neurons[j].BiasWeight;
-                        other.Layers[i].Neurons[j].Weights.CopyTo(Layers[i].Neurons[j].Weights, 0);
-                    }
-                }
-            }
-        }
-
 
         //Backprop
         //ClearUpdates: sets PartialDerivative, BiasUpdate, WeightUpdats all to ZERO
@@ -120,12 +74,83 @@ namespace NeuralNetwork
         //CalculateUpdate: finds bias & weight updates for each neuron
         //ApplyUpdate: add the bias and weight updates to the dendrites
 
+        public void Backprop(double[][] inputs, double[][] desiredOutputs, double learningRate)
+        {
+            //clear the existing deltas in preperation of the algorithm
+            ClearUpdates();
+            for (int i = 0; i < inputs.Length; i++)
+            {
+                //train the net for each row of test data. creating a summation of weight & bias changes per test
+                Compute(inputs[i]);
+                CalculateError(desiredOutputs[i]);
+                CalculateUpdates(inputs[i], learningRate);
+            }
+            //apply the weight & bias changes after training on all of the given test data
 
-        public void CalculateError()
+
+            ApplyUpdates();     //why is this not in the loop? Wouldn't it just apply the update from the last set of input/outputs?
+        }
+
+        public void CalculateError(double[] desiredOutputs)
         {
             Layer outputLayer = Layers[Layers.Count - 1];
-            foreach (var neuron in outputLayer.Neurons)
+            for (int i = 0; i < desiredOutputs.Length; i++)
             {
+                Neuron neuron = outputLayer.Neurons[i];
+                double error = neuron.Output - desiredOutputs[i];
+
+                neuron.PartialDerivative = error * (error * (1 - error)); //I should probably fix this later
+            }
+
+            for (int i = Layers.Count - 2; i >= 0; i--)
+            {
+                Layer currLayer = Layers[i];
+                Layer nextLayer = Layers[i + 1];
+
+                for (int j = 0; j < currLayer.Neurons.Length; j++)
+                {
+                    Neuron neuron = currLayer.Neurons[j];
+
+
+                    double error = 0.0;
+                    foreach (Neuron nextNeuron in nextLayer.Neurons)
+                    {
+                        error += nextNeuron.PartialDerivative * nextNeuron.Weights[j];
+                    }
+                    neuron.PartialDerivative = error * (error * (1 - error)); //this too
+                }
+            }
+        }
+
+        private void CalculateUpdates(double[] input, double learningRate)
+        {
+            //Input Layer
+            Layer inputLayer = Layers[0];
+            for (int i = 0; i < inputLayer.Neurons.Length; i++)
+            {
+                Neuron neuron = inputLayer.Neurons[i];
+                for (int j = 0; j < neuron.Weights.Length; j++)
+                {
+                    neuron.WeightUpdates[j] += learningRate * neuron.PartialDerivative * input[j];
+                }
+                neuron.BiasUpdate += learningRate * neuron.PartialDerivative;
+            }
+
+            //Hidden Layers
+            for (int i = 1; i < Layers.Count; i++)
+            {
+                Layer currLayer = Layers[i];
+                Layer prevLayer = Layers[i - 1];
+
+                for (int j = 0; j < currLayer.Neurons.Length; j++)
+                {
+                    Neuron neuron = currLayer.Neurons[j];
+                    for (int k = 0; k < neuron.Weights.Length; k++)
+                    {
+                        neuron.WeightUpdates[k] += learningRate * neuron.PartialDerivative * prevLayer.Output[k];
+                    }
+                    neuron.BiasUpdate += learningRate * neuron.PartialDerivative;
+                }
             }
         }
 
@@ -136,7 +161,7 @@ namespace NeuralNetwork
                 foreach (var neuron in layer.Neurons)
                 {
                     neuron.PartialDerivative = 0;
-                    neuron.biasUpdate = 0;
+                    neuron.BiasUpdate = 0;
                     for (int i = 0; i < neuron.Weights.Length; i++)
                     {
                         neuron.WeightUpdates[i] = 0;
@@ -151,7 +176,7 @@ namespace NeuralNetwork
             {
                 foreach (var neuron in layer.Neurons)
                 {
-                    neuron.BiasWeight += neuron.biasUpdate;
+                    neuron.BiasWeight += neuron.BiasUpdate;
                     for (int i = 0; i < neuron.Weights.Length; i++)
                     {
                         neuron.Weights[i] += neuron.WeightUpdates[i];

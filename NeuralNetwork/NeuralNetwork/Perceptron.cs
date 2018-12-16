@@ -15,7 +15,7 @@ namespace NeuralNetwork
 
         //Backprop Variables
         public double PartialDerivative;
-        public double biasUpdate;
+        public double BiasUpdate;
         public double[] WeightUpdates;
 
         public Neuron(Func<double, double> activation, int numberOfInputs)
