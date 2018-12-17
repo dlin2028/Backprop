@@ -5,12 +5,12 @@ using System.Text;
 
 namespace NeuralNetwork
 {
-    class Neuron
+    public class Neuron
     {
         //Standard Use
         public double BiasWeight;
         public double[] Weights;
-        public Func<double, double> activation;
+        public IActivation Activation;
         public double Output;
 
         //Backprop Variables
@@ -18,9 +18,9 @@ namespace NeuralNetwork
         public double BiasUpdate;
         public double[] WeightUpdates;
 
-        public Neuron(Func<double, double> activation, int numberOfInputs)
+        public Neuron(IActivation activation, int numberOfInputs)
         {
-            this.activation = activation;
+            this.Activation = activation;
             Weights = new double[numberOfInputs];
             WeightUpdates = new double[numberOfInputs];
         }
@@ -47,7 +47,7 @@ namespace NeuralNetwork
                 dotProduct += Weights[i] * inputs[i];
             }
 
-            Output = activation(dotProduct);
+            Output = Activation.Function(dotProduct);
             return Output;
         }
 

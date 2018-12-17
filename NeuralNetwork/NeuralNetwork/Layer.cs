@@ -5,7 +5,7 @@ using System.Text;
 
 namespace NeuralNetwork
 {
-    class Layer
+    public class Layer
     {
         public Neuron[] Neurons;
         public double[] Output => Neurons.Select(n => n.Output).ToArray(); //Linq expressions help with basic selections
@@ -16,7 +16,7 @@ namespace NeuralNetwork
         /// <param name="activation">the activation function to be set in all neurons of the constructed layer</param>
         /// <param name="inputCount">the number of inputs of the layer</param>
         /// <param name="neuronCount">the number of neurons in the layer</param>
-        public Layer(Func<double, double> activation, int inputCount, int neuronCount)
+        public Layer(IActivation activation, int inputCount, int neuronCount)
         {
             Neurons = new Neuron[neuronCount];
             for (int i = 0; i < Neurons.Length; i++)

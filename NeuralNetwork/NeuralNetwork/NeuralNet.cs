@@ -10,25 +10,16 @@ namespace NeuralNetwork
         List<Layer> Layers;
         public double[] Output => Layers.Last().Output;
 
-        private List<Layer> oldLayers;
-
         /// <summary>
         /// Constructs a Feed Forward Neural Network object
         /// </summary>
         /// <param name="activation">the activation function used for computation by the neurons</param>
         /// <param name="inputCount">the number of inputs to the neural network</param>
         /// <param name="layerNeurons">an array representing how many neurons are in each of the hidden layers and output layer of the neural network</param>
-        public NeuralNet(Func<double, double> activation, int inputCount, params int[] layerNeurons)
+
+        public NeuralNet(Layer[] layers)
         {
-            Layers = new List<Layer>
-            {
-                new Layer(activation, inputCount, layerNeurons[0])
-            };
-            for (int i = 1; i < layerNeurons.Length; i++)
-            {
-                //the number of inputs of a layer is the number of outputs of the previous layer
-                Layers.Add(new Layer(activation, Layers[i - 1].Neurons.Length, layerNeurons[i]));
-            }
+            Layers = new List<Layer>(layers);
         }
 
         public double[] Compute(double[] data, int layer = 0)
@@ -40,19 +31,22 @@ namespace NeuralNetwork
             return Compute(Layers[layer].Compute(data), layer + 1);
         }
         
-        public double Fitness(double[][] inputs, double[][] desiredOutputs)
+        public double MAE(double[][] inputs, double[][] desiredOutputs)
         {
-            double fitness = 0;
+            double mae = 0;
             for (int i = 0; i < inputs.Length; i++)
             {
-                var input = inputs[i];
-                var desiredOutput = desiredOutputs[i];
-                for (int j = 0; j < input.Length; j++)
+                var output = Compute(inputs[i]);
+
+                double e = 0;
+                for (int j = 0; j < desiredOutputs[i].Length; j++)
                 {
-                    fitness += Math.Abs(Compute(input)[j] - desiredOutput[0]);
+                    e += Math.Abs(desiredOutputs[i][j] - output[j]);
                 }
+                e /= desiredOutputs[i].Length;
+                mae += e;
             }
-            return fitness / inputs.Length;
+            return mae / inputs.Length;
         }
 
         /// <summary>
@@ -97,9 +91,9 @@ namespace NeuralNetwork
             for (int i = 0; i < desiredOutputs.Length; i++)
             {
                 Neuron neuron = outputLayer.Neurons[i];
-                double error = neuron.Output - desiredOutputs[i];
+                double error = desiredOutputs[i] - neuron.Output;
 
-                neuron.PartialDerivative = error * (error * (1 - error)); //I should probably fix this later
+                neuron.PartialDerivative = error * neuron.Activation.Derivative(neuron.Output);
             }
 
             for (int i = Layers.Count - 2; i >= 0; i--)
@@ -117,7 +111,7 @@ namespace NeuralNetwork
                     {
                         error += nextNeuron.PartialDerivative * nextNeuron.Weights[j];
                     }
-                    neuron.PartialDerivative = error * (error * (1 - error)); //this too
+                    neuron.PartialDerivative = error * neuron.Activation.Derivative(neuron.Output);
                 }
             }
         }
