@@ -17,9 +17,21 @@ namespace NeuralNetwork
         /// <param name="inputCount">the number of inputs to the neural network</param>
         /// <param name="layerNeurons">an array representing how many neurons are in each of the hidden layers and output layer of the neural network</param>
 
-        public NeuralNet(Layer[] layers)
+
+        public NeuralNet(int inputCount, params (int neurons, IActivation activation)[] layerInfo)
         {
-            Layers = new List<Layer>(layers);
+            Layers = new List<Layer>();
+            Layer lastLayer = null;
+            foreach (var info in layerInfo)
+            {
+                if(lastLayer == null)
+                {
+                    Layers.Add(new Layer(info.activation, inputCount, info.neurons));
+                }
+
+                Layers.Add(new Layer(info.activation, lastLayer.Neurons.Count(), info.neurons));
+                lastLayer = Layers[Layers.Count - 1];
+            }
         }
 
         public double[] Compute(double[] data, int layer = 0)

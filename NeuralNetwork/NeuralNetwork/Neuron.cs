@@ -46,8 +46,14 @@ namespace NeuralNetwork
             {
                 dotProduct += Weights[i] * inputs[i];
             }
+            
+            Output = Activation.Function(dotProduct/Weights.Length + BiasWeight);
+            
+            if(Output < 0)
+            {
+                ;
+            }
 
-            Output = Activation.Function(dotProduct);
             return Output;
         }
 
