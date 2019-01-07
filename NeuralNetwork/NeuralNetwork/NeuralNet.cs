@@ -28,10 +28,22 @@ namespace NeuralNetwork
                 {
                     Layers.Add(new Layer(info.activation, inputCount, info.neurons));
                 }
+                else
+                {
+                    Layers.Add(new Layer(info.activation, lastLayer.Neurons.Count(), info.neurons));
+                }
 
-                Layers.Add(new Layer(info.activation, lastLayer.Neurons.Count(), info.neurons));
                 lastLayer = Layers[Layers.Count - 1];
             }
+        }
+        private NeuralNet(List<Layer> layers)
+        {
+            Layers = layers;
+        }
+
+        public NeuralNet Clone()
+        {
+            return new NeuralNet(Layers);
         }
 
         public double[] Compute(double[] data, int layer = 0)
