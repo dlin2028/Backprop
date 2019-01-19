@@ -19,14 +19,9 @@ namespace NeuralNetwork
             return 1 / (1 + Math.Exp(-input));
         }
 
-        public double Inverse(double input)
-        {
-            return Math.Log(input, Math.E);
-        }
-
         public double Derivative(double input)
         {
-             return input * (1 - input);
+            return Function(input) * (1 - Function(input));
         }
     }
     
@@ -37,14 +32,9 @@ namespace NeuralNetwork
             return input > 0.5 ? 1 : 0;
         }
 
-        public double Inverse(double input)
-        {
-            throw new NotImplementedException();
-        }
-
         public double Derivative(double input)
         {
-            return input * (1 - input);
+            return 0;
         }
     }
 
@@ -55,25 +45,15 @@ namespace NeuralNetwork
             return Math.Tanh(input);
         }
 
-        public double Inverse(double input)
-        {
-            throw new NotImplementedException();
-        }
-
         public double Derivative(double input)
         {
-            return 1 - input * input;
+            return 1 - (Function(input) * Function(input));
         }
     }
 
     public class Identity : IActivation
     {
         public double Function(double input)
-        {
-            return input;
-        }
-
-        public double Inverse(double input)
         {
             return input;
         }

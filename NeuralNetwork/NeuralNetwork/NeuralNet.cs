@@ -8,7 +8,6 @@ namespace NeuralNetwork
     public class NeuralNet
     {
         List<Layer> Layers;
-        public double[] Output => Layers.Last().Output;
 
         /// <summary>
         /// Constructs a Feed Forward Neural Network object
@@ -21,19 +20,19 @@ namespace NeuralNetwork
         public NeuralNet(int inputCount, params (int neurons, IActivation activation)[] layerInfo)
         {
             Layers = new List<Layer>();
-            Layer lastLayer = null;
+            Layer prevLayer = null;
             foreach (var info in layerInfo)
             {
-                if(lastLayer == null)
+                if (prevLayer == null)
                 {
                     Layers.Add(new Layer(info.activation, inputCount, info.neurons));
                 }
                 else
                 {
-                    Layers.Add(new Layer(info.activation, lastLayer.Neurons.Count(), info.neurons));
+                    Layers.Add(new Layer(info.activation, prevLayer.Neurons.Count(), info.neurons));
                 }
 
-                lastLayer = Layers[Layers.Count - 1];
+                prevLayer = Layers[Layers.Count - 1];
             }
         }
         private NeuralNet(List<Layer> layers)
@@ -43,7 +42,7 @@ namespace NeuralNetwork
 
         public NeuralNet Clone()
         {
-            return new NeuralNet(Layers);
+            return new NeuralNet(Layers.Select(layer => layer.Clone()).ToList());
         }
 
         public double[] Compute(double[] data, int layer = 0)
@@ -54,7 +53,7 @@ namespace NeuralNetwork
             }
             return Compute(Layers[layer].Compute(data), layer + 1);
         }
-        
+
         public double MAE(double[][] inputs, double[][] desiredOutputs)
         {
             double mae = 0;
@@ -85,28 +84,35 @@ namespace NeuralNetwork
             }
         }
 
+        public void Backprop(double[][] inputs, double[][] desiredOutputs, double learningRate, double momentum, int batchSize)
+        {
+            for (int i = 0; i < inputs.Length; i += batchSize)
+            {
+                var ins = inputs.Skip(i).Take(batchSize).ToArray();
+                var outs = desiredOutputs.Skip(i).Take(batchSize).ToArray();
+
+                Backprop(ins, outs, learningRate, momentum);
+            }
+        }
+
 
         //Backprop
         //ClearUpdates: sets PartialDerivative, BiasUpdate, WeightUpdats all to ZERO
         //CalculateError: finds partial derivative for each neuron
         //CalculateUpdate: finds bias & weight updates for each neuron
         //ApplyUpdate: add the bias and weight updates to the dendrites
-
-        public void Backprop(double[][] inputs, double[][] desiredOutputs, double learningRate)
+        public void Backprop(double[][] inputs, double[][] desiredOutputs, double learningRate, double momentum)
         {
-            //clear the existing deltas in preperation of the algorithm
             ClearUpdates();
             for (int i = 0; i < inputs.Length; i++)
             {
-                //train the net for each row of test data. creating a summation of weight & bias changes per test
+
                 Compute(inputs[i]);
                 CalculateError(desiredOutputs[i]);
                 CalculateUpdates(inputs[i], learningRate);
+
             }
-            //apply the weight & bias changes after training on all of the given test data
-
-
-            ApplyUpdates();     //why is this not in the loop? Wouldn't it just apply the update from the last set of input/outputs?
+            ApplyUpdates(momentum);
         }
 
         public void CalculateError(double[] desiredOutputs)
@@ -117,7 +123,7 @@ namespace NeuralNetwork
                 Neuron neuron = outputLayer.Neurons[i];
                 double error = desiredOutputs[i] - neuron.Output;
 
-                neuron.PartialDerivative = error * neuron.Activation.Derivative(neuron.Output);
+                neuron.PartialDerivative = error * neuron.Activation.Derivative(neuron.Input);
             }
 
             for (int i = Layers.Count - 2; i >= 0; i--)
@@ -135,7 +141,7 @@ namespace NeuralNetwork
                     {
                         error += nextNeuron.PartialDerivative * nextNeuron.Weights[j];
                     }
-                    neuron.PartialDerivative = error * neuron.Activation.Derivative(neuron.Output);
+                    neuron.PartialDerivative = error * neuron.Activation.Derivative(neuron.Input);
                 }
             }
         }
@@ -165,7 +171,7 @@ namespace NeuralNetwork
                     Neuron neuron = currLayer.Neurons[j];
                     for (int k = 0; k < neuron.Weights.Length; k++)
                     {
-                        neuron.WeightUpdates[k] += learningRate * neuron.PartialDerivative * prevLayer.Output[k];
+                        neuron.WeightUpdates[k] += learningRate * neuron.PartialDerivative * prevLayer.Neurons[k].Output;
                     }
                     neuron.BiasUpdate += learningRate * neuron.PartialDerivative;
                 }
@@ -188,16 +194,18 @@ namespace NeuralNetwork
             }
         }
 
-        public void ApplyUpdates(bool clear = false)
+        public void ApplyUpdates(double momentum)
         {
             foreach (var layer in Layers)
             {
                 foreach (var neuron in layer.Neurons)
                 {
-                    neuron.BiasWeight += neuron.BiasUpdate;
+                    neuron.BiasWeight += neuron.BiasUpdate + (neuron.PrevBiasUpdate * momentum);
+                    neuron.PrevBiasUpdate = neuron.BiasUpdate;
                     for (int i = 0; i < neuron.Weights.Length; i++)
                     {
-                        neuron.Weights[i] += neuron.WeightUpdates[i];
+                        neuron.Weights[i] += neuron.WeightUpdates[i] + (neuron.PrevWeightUpdates[i] * momentum);
+                        neuron.PrevWeightUpdates[i] = neuron.WeightUpdates[i];
                     }
                 }
             }

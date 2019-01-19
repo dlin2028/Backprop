@@ -11,6 +11,7 @@ namespace NeuralNetwork
         public double BiasWeight;
         public double[] Weights;
         public IActivation Activation;
+        public double Input;
         public double Output;
 
         //Backprop Variables
@@ -18,19 +19,38 @@ namespace NeuralNetwork
         public double BiasUpdate;
         public double[] WeightUpdates;
 
+        public double PrevBiasUpdate;
+        public double[] PrevWeightUpdates;
+
         public Neuron(IActivation activation, int numberOfInputs)
         {
             this.Activation = activation;
             Weights = new double[numberOfInputs];
             WeightUpdates = new double[numberOfInputs];
+            PrevWeightUpdates = new double[numberOfInputs];
+        }
+
+        public Neuron Clone()
+        {
+            var output = new Neuron(Activation, Weights.Length);
+
+            output.Weights = new double[Weights.Length];
+            Array.Copy(Weights, output.Weights, Weights.Length);
+            output.BiasWeight = BiasWeight;
+            output.Output = Output;
+            output.BiasUpdate = BiasUpdate;
+            output.WeightUpdates = WeightUpdates;
+            output.PartialDerivative = PartialDerivative;
+
+            return output;
         }
 
         public void RandomizeWeights(Random rng)
         {
-            BiasWeight = rng.NextDouble();
+            BiasWeight = rng.NextDouble(-0.5, 0.5);
             for (int i = 0; i < Weights.Length; i++)
             {
-                Weights[i] = rng.NextDouble();
+                Weights[i] = rng.NextDouble(-0.5, 0.5);
             }
         }
 
@@ -46,28 +66,11 @@ namespace NeuralNetwork
             {
                 dotProduct += Weights[i] * inputs[i];
             }
-            
-            Output = Activation.Function(dotProduct/Weights.Length + BiasWeight);
-            
-            if(Output < 0)
-            {
-                ;
-            }
+
+            Input = dotProduct + BiasWeight;
+            Output = Activation.Function(Input);
 
             return Output;
         }
-
-
-        public void Train(double[] inputs, double desiredOutput)
-        {
-            double output = Compute(inputs);
-            double error = desiredOutput - output;
-            for (int i = 0; i < inputs.Length; i++)
-            {
-                Weights[i] += error * inputs[i];
-            }
-            BiasWeight += error;
-        }
-
     }
 }

@@ -7,7 +7,6 @@ namespace NeuralNetwork
     public interface IActivation
     {
         double Function(double input);
-        double Inverse(double output);
         double Derivative(double input);
     }
 }

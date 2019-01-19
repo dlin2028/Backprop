@@ -8,7 +8,6 @@ namespace NeuralNetwork
     public class Layer
     {
         public Neuron[] Neurons;
-        public double[] Output => Neurons.Select(n => n.Output).ToArray(); //Linq expressions help with basic selections
 
         /// <summary>
         /// Constructs a Layer object
@@ -23,6 +22,15 @@ namespace NeuralNetwork
             {
                 Neurons[i] = new Neuron(activation, inputCount);
             }
+        }
+        public Layer(Neuron[] neurons)
+        {
+            Neurons = neurons;
+        }
+
+        public Layer Clone()
+        {
+            return new Layer(Neurons.Select(neuron => neuron.Clone()).ToArray());
         }
 
         /// <summary>
@@ -44,11 +52,12 @@ namespace NeuralNetwork
         /// <returns>the outputs of each neuron stored in a double array</returns>
         public double[] Compute(double[] input)
         {
+            double[] output = new double[Neurons.Length];
             for (int i = 0; i < Neurons.Length; i++)
             {
-                Neurons[i].Compute(input);
+                output[i] = Neurons[i].Compute(input);
             }
-            return Output;
+            return output;
         }
     }
 }
